@@ -5,7 +5,7 @@
 	<groupId>com.ruckuswireless</groupId>
 	<artifactId>pentaho-kafka-consumer</artifactId>
 	<version>TRUNK-SNAPSHOT</version>
-	<name>Apache Kafka Integration Plug-In for Pentaho</name>
+	<name>Apache Kafka Consumer Plug-In for Pentaho</name>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
