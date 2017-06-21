@@ -1,4 +1,4 @@
-package com.ruckuswireless.pentaho.kafka.consumer;
+package org.pentaho.di.trans.kafka.consumer;
 
 import java.util.concurrent.Callable;
 

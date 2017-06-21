@@ -1,5 +1,7 @@
-package com.ruckuswireless.pentaho.kafka.consumer;
+package org.pentaho.di.trans.kafka.consumer;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +32,7 @@ import org.pentaho.di.trans.step.StepMetaInterface;
 import org.w3c.dom.Node;
 
 import kafka.consumer.ConsumerConfig;
+import org.pentaho.di.core.annotations.Step;
 
 /**
  * Kafka Consumer step definitions and serializer to/from XML and to/from Kettle
@@ -37,6 +40,12 @@ import kafka.consumer.ConsumerConfig;
  *
  * @author Michael Spector
  */
+@Step(id = "KafkaConsumer",
+      image = "org/pentaho/di/trans/kafka/consumer/resources/kafka_consumer.png",
+      i18nPackageName="org.pentaho.di.trans.kafka.consumer",
+      name="KafkaConsumerDialog.Shell.Title",
+      description = "KafkaConsumerDialog.Shell.Tooltip",
+      categoryDescription="i18n:org.pentaho.di.trans.step:BaseStep.Category.Input")
 public class KafkaConsumerMeta extends BaseStepMeta implements StepMetaInterface {
 
 	public static final String[] KAFKA_PROPERTIES_NAMES = new String[] { "zookeeper.connect", "group.id", "consumer.id",
@@ -59,7 +68,7 @@ public class KafkaConsumerMeta extends BaseStepMeta implements StepMetaInterface
 	private String timeout;
 	private boolean stopOnEmptyTopic;
 
-	Properties getKafkaProperties() {
+	public Properties getKafkaProperties() {
 		return kafkaProperties;
 	}
 
@@ -199,10 +208,13 @@ public class KafkaConsumerMeta extends BaseStepMeta implements StepMetaInterface
 			// populate the field
 			stopOnEmptyTopic = XMLHandler.getTagValue(stepnode, "STOPONEMPTYTOPIC") != null;
 			Node kafkaNode = XMLHandler.getSubNode(stepnode, "KAFKA");
-			for (String name : KAFKA_PROPERTIES_NAMES) {
-				String value = XMLHandler.getTagValue(kafkaNode, name);
-				if (value != null) {
-					kafkaProperties.put(name, value);
+			String[] kafkaElements = XMLHandler.getNodeElements(kafkaNode);
+			if (kafkaElements != null) {
+				for (String propName : kafkaElements) {
+					String value = XMLHandler.getTagValue(kafkaNode, propName);
+					if (value != null) {
+						kafkaProperties.put(propName, value);
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -231,7 +243,7 @@ public class KafkaConsumerMeta extends BaseStepMeta implements StepMetaInterface
 			retval.append("    ").append(XMLHandler.addTagValue("STOPONEMPTYTOPIC", "true"));
 		}
 		retval.append("    ").append(XMLHandler.openTag("KAFKA")).append(Const.CR);
-		for (String name : KAFKA_PROPERTIES_NAMES) {
+		for (String name : kafkaProperties.stringPropertyNames()) {
 			String value = kafkaProperties.getProperty(name);
 			if (value != null) {
 				retval.append("      " + XMLHandler.addTagValue(name, value));
@@ -250,6 +262,11 @@ public class KafkaConsumerMeta extends BaseStepMeta implements StepMetaInterface
 			limit = rep.getStepAttributeString(stepId, "LIMIT");
 			timeout = rep.getStepAttributeString(stepId, "TIMEOUT");
 			stopOnEmptyTopic = rep.getStepAttributeBoolean(stepId, "STOPONEMPTYTOPIC");
+			String kafkaPropsXML = rep.getStepAttributeString(stepId, "KAFKA");
+			if (kafkaPropsXML != null) {
+				kafkaProperties.loadFromXML(new ByteArrayInputStream(kafkaPropsXML.getBytes()));
+			}
+			// Support old versions:
 			for (String name : KAFKA_PROPERTIES_NAMES) {
 				String value = rep.getStepAttributeString(stepId, name);
 				if (value != null) {
@@ -279,12 +296,10 @@ public class KafkaConsumerMeta extends BaseStepMeta implements StepMetaInterface
 				rep.saveStepAttribute(transformationId, stepId, "TIMEOUT", timeout);
 			}
 			rep.saveStepAttribute(transformationId, stepId, "STOPONEMPTYTOPIC", stopOnEmptyTopic);
-			for (String name : KAFKA_PROPERTIES_NAMES) {
-				String value = kafkaProperties.getProperty(name);
-				if (value != null) {
-					rep.saveStepAttribute(transformationId, stepId, name, value);
-				}
-			}
+
+			ByteArrayOutputStream buf = new ByteArrayOutputStream();
+			kafkaProperties.storeToXML(buf, null);
+			rep.saveStepAttribute(transformationId, stepId, "KAFKA", buf.toString());
 		} catch (Exception e) {
 			throw new KettleException("KafkaConsumerMeta.Exception.saveRep", e);
 		}
